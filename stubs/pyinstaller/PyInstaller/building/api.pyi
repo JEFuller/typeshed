@@ -1,12 +1,13 @@
 # PYZ, EXE and COLLECT referenced in https://pyinstaller.org/en/stable/spec-files.html#spec-file-operation
 # MERGE is referenced in https://pyinstaller.org/en/stable/spec-files.html#example-merge-spec-file
+# hide_console referenced in https://pyinstaller.org/en/stable/feature-notes.html#automatic-hiding-and-minimization-of-console-window-under-windows
 # Not to be imported during runtime, but is the type reference for spec files which are executed as python code
 import sys
 from _typeshed import FileDescriptorOrPath, StrOrBytesPath, StrPath, Unused
 from collections.abc import Iterable, Mapping, Sequence
 from types import CodeType
-from typing import ClassVar
-from typing_extensions import Final, Literal, TypeAlias
+from typing import ClassVar, Final, Literal
+from typing_extensions import TypeAlias
 
 from PyInstaller.building import _PyiBlockCipher
 from PyInstaller.building.build_main import Analysis
@@ -16,12 +17,12 @@ from PyInstaller.utils.win32.versioninfo import VSVersionInfo
 
 if sys.platform == "darwin":
     _TargetArch: TypeAlias = Literal["x86_64", "arm64", "universal2"]
-    _SuportedTargetArchParam: TypeAlias = _TargetArch | None
+    _SupportedTargetArchParam: TypeAlias = _TargetArch | None
     _CodesignIdentity: TypeAlias = str | None
     _CodesignIdentityParam: TypeAlias = str | None
 else:
     _TargetArch: TypeAlias = None
-    _SuportedTargetArchParam: TypeAlias = Unused
+    _SupportedTargetArchParam: TypeAlias = Unused
     _CodesignIdentity: TypeAlias = None
     _CodesignIdentityParam: TypeAlias = Unused
 
@@ -46,10 +47,12 @@ else:
     _Manifest: TypeAlias = None
     _ManifestParam: TypeAlias = Unused
 
+_HideConsole: TypeAlias = Literal["hide-early", "minimize-early", "hide-late", "minimize-late"] | None
+
 class PYZ(Target):
     name: str
     cipher: _PyiBlockCipher
-    dependencies: list[_TOCTuple]  # type: ignore[assignment]
+    dependencies: list[_TOCTuple]
     toc: list[_TOCTuple]
     code_dict: dict[str, CodeType]
     def __init__(self, *tocs: Iterable[_TOCTuple], name: str | None = None, cipher: _PyiBlockCipher = None) -> None: ...
@@ -78,7 +81,7 @@ class PKG(Target):
         strip_binaries: bool = False,
         upx_binaries: bool = False,
         upx_exclude: Iterable[str] | None = None,
-        target_arch: _SuportedTargetArchParam = None,
+        target_arch: _SupportedTargetArchParam = None,
         codesign_identity: _CodesignIdentityParam = None,
         entitlements_file: FileDescriptorOrPath | None = None,
     ) -> None: ...
@@ -88,6 +91,7 @@ class EXE(Target):
     exclude_binaries: bool
     bootloader_ignore_signals: bool
     console: bool
+    hide_console: _HideConsole
     disable_windowed_traceback: bool
     debug: bool
     name: str
@@ -99,6 +103,7 @@ class EXE(Target):
     strip: bool
     upx_exclude: Iterable[str]
     runtime_tmpdir: str | None
+    contents_directory: str | None
     append_pkg: bool
     uac_admin: bool
     uac_uiaccess: bool
@@ -118,22 +123,24 @@ class EXE(Target):
         exclude_binaries: bool = False,
         bootloader_ignore_signals: bool = False,
         console: bool = True,
+        hide_console: _HideConsole = None,
         disable_windowed_traceback: bool = False,
         debug: bool = False,
         name: str | None = None,
         icon: _IconParam = None,
         version: _VersionParam = None,
         manifest: _ManifestParam = None,
-        embed_manifest: bool = True,
+        embed_manifest: Literal[True] = True,
         resources: Sequence[str] = ...,
         strip: bool = False,
         upx_exclude: Iterable[str] = ...,
         runtime_tmpdir: str | None = None,
+        contents_directory: str = "_internal",
         append_pkg: bool = True,
         uac_admin: bool = False,
         uac_uiaccess: bool = False,
         argv_emulation: bool = False,
-        target_arch: _SuportedTargetArchParam = None,
+        target_arch: _SupportedTargetArchParam = None,
         codesign_identity: _CodesignIdentityParam = None,
         entitlements_file: FileDescriptorOrPath | None = None,
         upx: bool = False,

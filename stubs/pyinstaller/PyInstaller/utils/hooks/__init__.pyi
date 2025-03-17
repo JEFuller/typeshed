@@ -2,8 +2,7 @@
 
 from _typeshed import StrOrBytesPath, StrPath
 from collections.abc import Callable, Iterable
-from typing import Any
-from typing_extensions import Final, Literal
+from typing import Any, Final, Literal
 
 from PyInstaller import HOMEPATH as HOMEPATH
 from PyInstaller.depend.imphookapi import PostGraphAPI
@@ -62,7 +61,7 @@ def collect_all(
     include_datas: Iterable[str] | None = None,
     on_error: Literal["ignore", "warn once", "warn", "raise"] = "warn once",
 ) -> tuple[list[tuple[str, str]], list[tuple[str, str]], list[str]]: ...
-def collect_entry_point(name: str) -> tuple[tuple[str, str], list[str]]: ...
+def collect_entry_point(name: str) -> tuple[list[tuple[str, str]], list[str]]: ...
 def get_hook_config(hook_api: PostGraphAPI, module_name: str, key: str) -> None: ...
 def include_or_exclude_file(
     filename: StrOrBytesPath,

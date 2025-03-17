@@ -12,17 +12,17 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import os
+import glob
+import os.path
 import re
 import subprocess
 import sys
 import urllib.parse
+from http import HTTPStatus
+from importlib.metadata import distribution
 
 import aiohttp
 import termcolor
-
-if sys.version_info >= (3, 8):
-    from importlib.metadata import distribution
 
 PYRIGHT_CONFIG = "pyrightconfig.stricter.json"
 
@@ -61,24 +61,19 @@ def run_stubdefaulter(stub_dir: str) -> None:
 
 
 def run_black(stub_dir: str) -> None:
-    print(f"Running black: black {stub_dir}")
-    subprocess.run(["black", stub_dir])
-
-
-def run_isort(stub_dir: str) -> None:
-    print(f"Running isort: isort {stub_dir}")
-    subprocess.run([sys.executable, "-m", "isort", stub_dir])
+    print(f"Running Black: black {stub_dir}")
+    subprocess.run(["pre-commit", "run", "black", "--files", *glob.iglob(f"{stub_dir}/**/*.pyi")])
 
 
 def run_ruff(stub_dir: str) -> None:
-    print(f"Running ruff: ruff {stub_dir}")
-    subprocess.run([sys.executable, "-m", "ruff", stub_dir])
+    print(f"Running Ruff: ruff check {stub_dir} --fix-only")
+    subprocess.run([sys.executable, "-m", "ruff", "check", stub_dir, "--fix-only"])
 
 
 async def get_project_urls_from_pypi(project: str, session: aiohttp.ClientSession) -> dict[str, str]:
     pypi_root = f"https://pypi.org/pypi/{urllib.parse.quote(project)}"
     async with session.get(f"{pypi_root}/json") as response:
-        if response.status != 200:
+        if response.status != HTTPStatus.OK:
             return {}
         j: dict[str, dict[str, dict[str, str]]]
         j = await response.json()
@@ -113,7 +108,7 @@ async def get_upstream_repo_url(project: str) -> str | None:
                 # truncate to https://site.com/user/repo
                 upstream_repo_url = "/".join(url.split("/")[:5])
                 async with session.get(upstream_repo_url) as response:
-                    if response.status == 200:
+                    if response.status == HTTPStatus.OK:
                         return upstream_repo_url
     return None
 
@@ -189,7 +184,7 @@ def add_pyright_exclusion(stub_dir: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="""Generate baseline stubs automatically for an installed pip package
-                       using stubgen. Also run black, isort and ruff. If the name of
+                       using stubgen. Also run Black and Ruff. If the name of
                        the project is different from the runtime Python package name, you may
                        need to use --package (example: --package yaml PyYAML)."""
     )
@@ -209,12 +204,11 @@ def main() -> None:
         #
         # The importlib.metadata module is used for projects whose name is different
         # from the runtime Python package name (example: PyYAML/yaml)
-        if sys.version_info >= (3, 8):
-            dist = distribution(project).read_text("top_level.txt")
-            if dist is not None:
-                packages = [name for name in dist.split() if not name.startswith("_")]
-                if len(packages) == 1:
-                    package = packages[0]
+        dist = distribution(project).read_text("top_level.txt")
+        if dist is not None:
+            packages = [name for name in dist.split() if not name.startswith("_")]
+            if len(packages) == 1:
+                package = packages[0]
         print(f'Using detected package "{package}" for project "{project}"', file=sys.stderr)
         print("Suggestion: Try again with --package argument if that's not what you wanted", file=sys.stderr)
 
@@ -225,7 +219,7 @@ def main() -> None:
     info = get_installed_package_info(project)
     if info is None:
         print(f'Error: "{project}" is not installed', file=sys.stderr)
-        print("", file=sys.stderr)
+        print(file=sys.stderr)
         print(f'Suggestion: Run "python3 -m pip install {project}" and try again', file=sys.stderr)
         sys.exit(1)
     project, version = info
@@ -239,7 +233,6 @@ def main() -> None:
     run_stubdefaulter(stub_dir)
 
     run_ruff(stub_dir)
-    run_isort(stub_dir)
     run_black(stub_dir)
 
     create_metadata(project, stub_dir, version)
